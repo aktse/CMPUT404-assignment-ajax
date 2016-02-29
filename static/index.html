@@ -1,4 +1,4 @@
-<!DOCTYPE HTML>
+    <!DOCTYPE HTML>
 <html> 
   <head> 
     <title>AJAX Assignment</title> 
@@ -40,16 +40,22 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
                 if (xhr.status==200) {
                     //XXX: parse some JSON from the request!
                     //XXX: Pass the data to the callback!
+                    responseVal = JSON.parse(xhr.responseText);
+                    callback(responseVal)
                 }
             } 
             catch(e) {
-                alert('Error: ' + e.name);
+                console.log('Error: ' + e.name);
             }
         }
     };
     //XXX: POST to a URL
     //XXX: set the mimetype and the accept headers!
     // Remember to use application/json !
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Content-type", "application/json");
+    xhr.setRequestHeader("Accept", "application/json");
+    xhr.send(objects);
 }
 
 
@@ -63,10 +69,20 @@ function drawCircle(context,entity) {
         var x = entity["x"];
         var y = entity["y"];
         //moveTo(x,y);
-        fillStyle = entity["colour"];
+        // Apply radial gradient to fill
+        var gradient = createRadialGradient(x, y, 0, x, y, entity["radius"]);
+        gradient.addColorStop(0, "white");
+        gradient.addColorStop(1, entity["colour"]);
+        fillStyle = gradient;
         strokeStyle = fillStyle;
-        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
+        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);
+        if (entity["colour"] == "red" || entity["colour"] == "blue") {
+            globalAlpha = 0.5;
+        } else {
+            globalAlpha = 1.0;
+        }
+        stroke();                              
+        fill();  
     }
 }
 
@@ -138,6 +154,9 @@ function addEntity(entity, data) {
     world[entity] = data;
     drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just  modified!
+    sendJSONXMLHTTPRequest("/entity/" + entity, JSON.stringify(data), function() {
+        console.log("Update success!");
+    })
 
 }
 
@@ -259,16 +278,26 @@ mouse.mousedraggers.push(function(x,y,clicked,e) {
                           'radius':10});
 });
 
-
 function update() {
     //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
+    // See below
     drawFrame();
+}
+
+function updateWorld() {
+    sendJSONXMLHTTPRequest("/world", null, function(data) {
+        world = data;
+        drawNextFrame();
+        // Update world in 1s
+        setTimeout(updateWorld, 1000);
+    });
 }
 
 // 30 frames per second
 setInterval( update, 1000/30.0);
 
-
+// Update world on load
+updateWorld()
 
     </script>
 </body>
